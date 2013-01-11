@@ -1,57 +1,73 @@
-/**
- * JSONP sets up and allows you to execute a JSONP request
- * @param {String} url  The URL you are requesting with the JSON data (you may include URL params)
- * @param {String} method  The method name for the callback function. Defaults to callback (for example, flickr's is "jsoncallback")
- * @param {Function} callback  The callback you want to execute as an anonymous function. The first parameter of the anonymous callback function is the JSON
- *
- * @example
- * JSONP('http://twitter.com/users/oscargodson.json',function(json){
- *  document.getElementById('avatar').innerHTML = '<p>Twitter Pic:</p><img src="'+json.profile_image_url+'">';
- * });
- *
- * @example
- * JSONP('http://api.flickr.com/services/feeds/photos_public.gne?id=12389944@N03&format=json','jsoncallback',function(json){
- *   document.getElementById('flickrPic').innerHTML = '<p>Flickr Pic:</p><img src="'+json.items[0].media.m+'">';
- * });
- */
 (function( window, undefined) {
-  var JSONP = function(url,method,callback){
-    //Set the defaults
-    url = url || '';
-    method = method || '';
-    callback = callback || function(){};
-  
-    //If no method was set and they used the callback param in place of
-    //the method param instead, we say method is callback and set a
-    //default method of "callback"
-    if(typeof method == 'function'){
-      callback = method;
-      method = 'callback';
+  if (!window || !window.document)
+        return;
+
+    var seq = 0, // sequent
+        document = window.document;
+
+    /**
+     * JSONP
+     * @param {String} uri The URL you are requesting with the JSON data (you may include URL params).
+     * @param {Function} callback The callback function which you want to execute for JSON data (JSON response is first argument).
+     * @param {Object} params The params contains data about callback param's name, onload function and onerror function.
+     * Params have next structure:
+     * params = {
+     *      callbackParam : '', default is callback
+     *      onerror_callback : function() {},
+     *      onload_callback : function() {},
+     *      script_order : 'defer' | 'async' (is default)
+     *}
+     */
+    window.JSONP = window.JSONP || function(uri, callback, params) {
+        if (!arguments.length || arguments.length < 2)
+            return;
+
+        uri = uri || '';
+        callback = callback || function() {};
+        params = params || {};
+
+        params.callbackParam = params.callbackParam || 'callback'
+
+        uri += uri.indexOf('?') === -1 ? '?' : '&';
+
+        function clear() {
+            try {
+                delete window[id];
+            } catch(e) {
+                window[id] = null;
+            }
+            document.documentElement.removeChild(script);
+        }
+
+        function response() {
+            clear();
+            callback.apply(this, arguments);
+        }
+
+        function doError() {
+            clear();
+            params.onerror && params.onerror.apply(this, arguments);
+        }
+
+        function doLoad() {
+            params.onload && params.onload.apply(this, arguments);
+        }
+
+        var id = '_JSONP_' + seq++,
+            script = document.createElement('script');
+
+        window[id] = response;
+
+        params.script_order = params.script_order || 'async';
+
+        script.onload = doLoad;
+        script.onerror = doError;
+        script.setAttribute(params.script_order, params.script_order);
+        script.setAttribute('src', uri + params.callbackParam + '=' + id);
+
+        document.documentElement.insertBefore(
+            script,
+            document.documentElement.lastChild
+        );
     }
-  
-    //This randomizes a function *name* for generated script tag at the bottom to call
-    //example: jsonp958653
-    var generatedFunction = 'jsonp'+Math.round(Math.random()*1000001)
-  
-    //Generate the temp JSONP function using the name above
-    //First, call the function the user defined in the callback param [callback(json)]
-    //Then delete the generated function from the window [delete window[generatedFunction]]
-    window[generatedFunction] = function(json){
-      callback(json);
-      delete window[generatedFunction];
-    };
-  
-    //Check if the user set their own params, and if not add a ? to start a list of params
-    //If in fact they did we add a & to add onto the params
-    //example1: url = http://url.com THEN http://url.com?callback=X
-    //example2: url = http://url.com?example=param THEN http://url.com?example=param&callback=X
-    if(url.indexOf('?') === -1){ url = url+'?'; }
-    else{ url = url+'&'; }
-  
-    //This generates the <script> tag
-    var jsonpScript = document.createElement('script');
-    jsonpScript.setAttribute("src", url+method+'='+generatedFunction);
-    document.getElementsByTagName("head")[0].appendChild(jsonpScript)
-  }
-  window.JSONP = JSONP;
 })(window);
