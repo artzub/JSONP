@@ -16,6 +16,7 @@
      *      onerror_callback : function() {},
      *      onload_callback : function() {},
      *      script_order : 'defer' | 'async' (is default)
+     *      charset : ''
      *}
      */
     window.JSONP = window.JSONP || function(uri, callback, params) {
@@ -62,6 +63,7 @@
 
         script.onload = doLoad;
         script.onerror = doError;
+        script.setAttribute('charset', params.charset || 'UTF-8');
         script.setAttribute(params.script_order, params.script_order);
         script.setAttribute('src', uri + params.callbackParam + '=' + id);
 
